@@ -3,133 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Express - Estilo Odoo</title>
+    <title>Bienvenido - POS System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .product-card:active { transform: scale(0.95); }
-        .odoo-purple { background-color: #714B67; } /* Color corporativo Odoo */
+        .odoo-purple { background-color: #714B67; }
+        .odoo-text { color: #714B67; }
     </style>
 </head>
-<body class="bg-gray-100 h-screen flex flex-col">
+<body class="bg-gray-50 font-sans">
 
-    <header class="odoo-purple text-white p-4 flex justify-between items-center shadow-lg">
-        <h1 class="text-xl font-bold">Punto de Venta</h1>
-        <div id="clock" class="font-mono">00:00:00</div>
-    </header>
-
-    <main class="flex-1 flex overflow-hidden">
-        <section class="w-2/3 p-4 overflow-y-auto">
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="product-grid">
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 odoo-purple rounded-lg"></div>
+                    <span class="text-xl font-bold odoo-text">POS Express</span>
                 </div>
-        </section>
-
-        <section class="w-1/3 bg-white border-l border-gray-300 flex flex-col">
-            <div class="p-4 bg-gray-50 border-b font-bold text-gray-700">Cliente: Consumidor Final</div>
-            
-            <div class="flex-1 overflow-y-auto p-4" id="cart-items">
-                <p class="text-center text-gray-400 mt-10">Carrito vacío</p>
+                <div class="hidden md:flex space-x-8 font-medium text-gray-600">
+                    <a href="#inicio" class="hover:text-purple-700">Inicio</a>
+                    <a href="#nosotros" class="hover:text-purple-700">Quienes Somos</a>
+                    <a href="#contacto" class="hover:text-purple-700">Contacto</a>
+                </div>
             </div>
+        </div>
+    </nav>
 
-            <div class="p-4 border-t border-gray-200 bg-gray-50">
-                <div class="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span id="subtotal">$0.00</span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span>Impuestos (16%):</span>
-                    <span id="tax">$0.00</span>
-                </div>
-                <div class="flex justify-between text-2xl font-bold text-purple-900 mt-2">
-                    <span>Total:</span>
-                    <span id="total">$0.00</span>
-                </div>
-                <button onclick="checkout()" class="w-full mt-4 odoo-purple text-white py-4 rounded-lg font-bold text-xl hover:bg-purple-900 transition shadow-md">
-                    PAGAR
-                </button>
+    <section id="inicio" class="py-12 px-4 max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+        <div>
+            <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6">
+                Gestiona tus ventas de forma simple y profesional.
+            </h2>
+            <p class="text-gray-600 text-lg mb-8">
+                La herramienta ideal para tu negocio, inspirada en la eficiencia de los grandes sistemas ERP pero diseñada para la velocidad del día a día.
+            </p>
+            <div id="nosotros" class="pt-8 border-t border-gray-200">
+                <h3 class="text-xl font-bold odoo-text mb-2">Quienes Somos</h3>
+                <p class="text-sm text-gray-500 italic">
+                    Somos un equipo dedicado a crear soluciones tecnológicas accesibles para emprendedores. Creemos que la tecnología debe simplificar el trabajo, no complicarlo.
+                </p>
             </div>
-        </section>
-    </main>
+        </div>
 
-    <script>
-        // Simulación de Base de Datos de Odoo
-        const products = [
-            { id: 1, name: "Café Americano", price: 2.50, color: "bg-amber-100" },
-            { id: 2, name: "Croissant", price: 3.00, color: "bg-orange-100" },
-            { id: 3, name: "Jugo Naranja", price: 4.00, color: "bg-yellow-100" },
-            { id: 4, name: "Sándwich Jamón", price: 6.50, color: "bg-red-100" },
-            { id: 5, name: "Muffin Chocolate", price: 3.50, color: "bg-brown-100" },
-            { id: 6, name: "Té Verde", price: 2.00, color: "bg-green-100" },
-        ];
-
-        let cart = [];
-
-        // Inicializar Productos
-        function displayProducts() {
-            const grid = document.getElementById('product-grid');
-            grid.innerHTML = products.map(p => `
-                <div onclick="addToCart(${p.id})" class="product-card ${p.color} p-4 rounded-xl border border-gray-200 cursor-pointer hover:shadow-md transition">
-                    <h3 class="font-bold text-gray-800">${p.name}</h3>
-                    <p class="text-purple-700 font-semibold">$${p.price.toFixed(2)}</p>
-                </div>
-            `).join('');
-        }
-
-        function addToCart(id) {
-            const product = products.find(p => p.id === id);
-            const exist = cart.find(item => item.id === id);
-            
-            if (exist) {
-                exist.qty++;
-            } else {
-                cart.push({ ...product, qty: 1 });
-            }
-            renderCart();
-        }
-
-        function renderCart() {
-            const container = document.getElementById('cart-items');
-            if (cart.length === 0) {
-                container.innerHTML = `<p class="text-center text-gray-400 mt-10">Carrito vacío</p>`;
-                updateTotals(0);
-                return;
-            }
-
-            container.innerHTML = cart.map(item => `
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
+        <div class="space-y-6">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                <h3 class="text-2xl font-bold mb-6 text-gray-800">Iniciar Sesión</h3>
+                <form class="space-y-4">
                     <div>
-                        <div class="font-bold">${item.name}</div>
-                        <div class="text-xs text-gray-500">${item.qty} ud. x $${item.price}</div>
+                        <label class="block text-sm font-medium text-gray-700">Usuario o Email</label>
+                        <input type="text" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="ejemplo@correo.com">
                     </div>
-                    <div class="font-semibold text-purple-800">$${(item.qty * item.price).toFixed(2)}</div>
-                </div>
-            `).join('');
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input type="password" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="••••••••">
+                    </div>
+                    <button type="button" onclick="location.href='pos.html'" class="w-full odoo-purple text-white py-3 rounded-lg font-bold hover:bg-purple-900 transition">
+                        Entrar al Sistema
+                    </button>
+                </form>
+            </div>
 
-            const subtotal = cart.reduce((acc, item) => acc + (item.qty * item.price), 0);
-            updateTotals(subtotal);
-        }
+            <div class="bg-gray-100 p-8 rounded-2xl border border-dashed border-gray-300">
+                <h3 class="text-lg font-bold mb-4 text-gray-700 text-center">¿Eres nuevo aquí? Regístrate</h3>
+                <form class="grid grid-cols-2 gap-4">
+                    <input type="text" class="p-2 text-sm border border-gray-300 rounded-md" placeholder="Nombre">
+                    <input type="email" class="p-2 text-sm border border-gray-300 rounded-md" placeholder="Email">
+                    <input type="password" class="p-2 text-sm border border-gray-300 rounded-md col-span-2" placeholder="Crea una contraseña">
+                    <button type="button" class="col-span-2 bg-white border border-purple-600 text-purple-600 py-2 rounded-md font-semibold hover:bg-purple-50 transition">
+                        Crear Cuenta Gratis
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
 
-        function updateTotals(subtotal) {
-            const tax = subtotal * 0.16;
-            const total = subtotal + tax;
-            document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
-            document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
-            document.getElementById('total').textContent = `$${total.toFixed(2)}`;
-        }
+    <footer id="contacto" class="bg-white mt-12 border-t py-10">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <h3 class="text-xl font-bold mb-4">Contacto</h3>
+            <p class="text-gray-600">Soporte: soporte@posexpress.com</p>
+            <p class="text-gray-600">WhatsApp: +123 456 7890</p>
+            <div class="mt-6 text-sm text-gray-400">
+                &copy; 2026 POS Express. Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
 
-        function checkout() {
-            if (cart.length === 0) return alert("Carrito vacío");
-            alert("¡Venta procesada con éxito!\nTotal: " + document.getElementById('total').textContent);
-            cart = [];
-            renderCart();
-        }
-
-        // Reloj en tiempo real
-        setInterval(() => {
-            document.getElementById('clock').textContent = new Date().toLocaleTimeString();
-        }, 1000);
-
-        displayProducts();
-    </script>
 </body>
 </html>
-
