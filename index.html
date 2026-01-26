@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenido - POS System</title>
+    <title>POS Express - Acceso</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .odoo-purple { background-color: #714B67; }
@@ -31,15 +31,12 @@
     <section id="inicio" class="py-12 px-4 max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
         <div>
             <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6">
-                Gestiona tus ventas de forma simple y profesional.
+                Gestiona tus ventas de forma simple.
             </h2>
-            <p class="text-gray-600 text-lg mb-8">
-                La herramienta ideal para tu negocio, inspirada en la eficiencia de los grandes sistemas ERP pero diseñada para la velocidad del día a día.
-            </p>
             <div id="nosotros" class="pt-8 border-t border-gray-200">
                 <h3 class="text-xl font-bold odoo-text mb-2">Quienes Somos</h3>
                 <p class="text-sm text-gray-500 italic">
-                    Somos un equipo dedicado a crear soluciones tecnológicas accesibles para emprendedores. Creemos que la tecnología debe simplificar el trabajo, no complicarlo.
+                    Soluciones tecnológicas para emprendedores que buscan la eficiencia de Odoo en una herramienta ligera.
                 </p>
             </div>
         </div>
@@ -47,45 +44,77 @@
         <div class="space-y-6">
             <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
                 <h3 class="text-2xl font-bold mb-6 text-gray-800">Iniciar Sesión</h3>
-                <form class="space-y-4">
+                <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Usuario o Email</label>
-                        <input type="text" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="ejemplo@correo.com">
+                        <label class="block text-sm font-medium text-gray-700">Email</label>
+                        <input id="login-email" type="email" class="w-full mt-1 p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" placeholder="correo@ejemplo.com">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Contraseña</label>
-                        <input type="password" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="••••••••">
+                        <input id="login-pass" type="password" class="w-full mt-1 p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" placeholder="••••••••">
                     </div>
-                    <button type="button" onclick="location.href='pos.html'" class="w-full odoo-purple text-white py-3 rounded-lg font-bold hover:bg-purple-900 transition">
+                    <button onclick="loginUser()" class="w-full odoo-purple text-white py-3 rounded-lg font-bold hover:bg-purple-900 transition">
                         Entrar al Sistema
                     </button>
-                </form>
+                </div>
             </div>
 
             <div class="bg-gray-100 p-8 rounded-2xl border border-dashed border-gray-300">
-                <h3 class="text-lg font-bold mb-4 text-gray-700 text-center">¿Eres nuevo aquí? Regístrate</h3>
-                <form class="grid grid-cols-2 gap-4">
-                    <input type="text" class="p-2 text-sm border border-gray-300 rounded-md" placeholder="Nombre">
-                    <input type="email" class="p-2 text-sm border border-gray-300 rounded-md" placeholder="Email">
-                    <input type="password" class="p-2 text-sm border border-gray-300 rounded-md col-span-2" placeholder="Crea una contraseña">
-                    <button type="button" class="col-span-2 bg-white border border-purple-600 text-purple-600 py-2 rounded-md font-semibold hover:bg-purple-50 transition">
+                <h3 class="text-lg font-bold mb-4 text-gray-700 text-center">Registro de Usuario Nuevo</h3>
+                <div class="space-y-4">
+                    <input id="reg-email" type="email" class="w-full p-2 text-sm border border-gray-300 rounded-md" placeholder="Tu Email">
+                    <input id="reg-pass" type="password" class="w-full p-2 text-sm border border-gray-300 rounded-md" placeholder="Crea una contraseña">
+                    <button onclick="registerUser()" class="w-full bg-white border border-purple-600 text-purple-600 py-2 rounded-md font-semibold hover:bg-purple-50 transition">
                         Crear Cuenta Gratis
                     </button>
-                </form>
+                </div>
             </div>
         </div>
     </section>
 
-    <footer id="contacto" class="bg-white mt-12 border-t py-10">
-        <div class="max-w-6xl mx-auto px-4 text-center">
-            <h3 class="text-xl font-bold mb-4">Contacto</h3>
-            <p class="text-gray-600">Soporte: soporte@posexpress.com</p>
-            <p class="text-gray-600">WhatsApp: +123 456 7890</p>
-            <div class="mt-6 text-sm text-gray-400">
-                &copy; 2026 POS Express. Todos los derechos reservados.
-            </div>
-        </div>
-    </footer>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+        // CONFIGURACIÓN DE TU PROYECTO (Pega aquí tus datos de la consola de Firebase)
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO_ID",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_ID",
+            appId: "TU_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Función de Registro
+        window.registerUser = async () => {
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-pass').value;
+            if(!email || !pass) return alert("Completa todos los campos");
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass);
+                alert("Usuario creado con éxito. ¡Ya puedes iniciar sesión!");
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+        };
+
+        // Función de Login
+        window.loginUser = async () => {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                window.location.href = "pos.html"; // Redirige a la interfaz de ventas
+            } catch (e) {
+                alert("Fallo de autenticación: " + e.message);
+            }
+        };
+    </script>
 </body>
 </html>
