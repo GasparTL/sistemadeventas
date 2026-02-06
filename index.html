@@ -3,197 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escaner Local PDF</title>
+    <title>Escaner Pro Local</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
-        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, select, button { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; font-weight: bold; }
-        button.secondary { background: #6c757d; margin-top: 10px; }
-        #preview { width: 100%; height: 200px; object-fit: contain; background: #eee; border: 1px dashed #999; margin-top: 10px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f4f4f9; color: #333; }
+        h1, h3 { margin-top: 0; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         
-        /* Estilos para la lista de archivos */
-        .file-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .file-info { font-size: 0.9em; }
-        .btn-download { background: #28a745; width: auto; padding: 5px 15px; font-size: 0.8em; }
+        /* Inputs y Botones */
+        input, select, button { width: 100%; padding: 12px; margin-top: 8px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
+        button { background: #007bff; color: white; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button:active { transform: scale(0.98); }
+        button.delete { background: #dc3545; margin-top: 5px; }
+        button.zip { background: #6610f2; margin-bottom: 15px; }
+        button.icon-btn { width: auto; padding: 5px 10px; margin: 0; }
+
+        /* Vistas previas */
+        #preview { width: 100%; height: 200px; object-fit: contain; background: #eee; border-radius: 8px; margin-top: 10px; display: none; }
+        
+        /* Lista de Archivos */
+        .folder-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .file-item { background: #fafafa; border: 1px solid #eee; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .file-info { font-size: 0.9em; overflow: hidden; }
+        .file-actions { display: flex; gap: 5px; }
+        .tag { background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; color: #555; }
     </style>
 </head>
 <body>
 
-    <h1>📄 Escáner Local</h1>
+    <h1>📱 Escáner Pro</h1>
 
     <div class="card">
-        <h3>1. Nuevo Documento</h3>
+        <h3>📸 Escanear / Subir</h3>
         
-        <label>Nombre del archivo:</label>
-        <input type="text" id="fileName" placeholder="Ej: Factura Luz">
+        <label>Nombre del Archivo:</label>
+        <input type="text" id="fileName" placeholder="Ej: Ticket Compra">
 
         <label>Guardar en Carpeta:</label>
         <div style="display: flex; gap: 5px;">
-            <select id="folderSelect">
-                <option value="General">General</option>
-                <option value="Trabajo">Trabajo</option>
-                <option value="Personal">Personal</option>
-            </select>
-            <button style="width: 40px;" onclick="nuevaCarpeta()">+</button>
+            <select id="folderSelect"></select>
+            <button class="icon-btn" onclick="crearCarpeta()" title="Crear Carpeta">➕</button>
         </div>
 
-        <label>Foto del documento:</label>
         <input type="file" id="imageInput" accept="image/*" capture="environment">
-        
         <img id="preview">
 
-        <button onclick="guardarDocumento()">💾 Guardar en App</button>
+        <button onclick="guardarDocumento()" id="btnGuardar" style="margin-top:15px; display:none;">💾 Guardar PDF</button>
     </div>
 
     <div class="card">
-        <h3>📂 Mis Documentos</h3>
-        <label>Filtrar por carpeta:</label>
-        <select id="filterFolder" onchange="mostrarArchivos()">
-            <option value="Todas">Todas</option>
-        </select>
+        <div class="folder-header">
+            <h3>📂 Archivos</h3>
+            <button class="icon-btn delete" onclick="eliminarCarpetaActual()" title="Eliminar carpeta actual">🗑️ Carpeta</button>
+        </div>
 
-        <div id="fileList">
-            </div>
+        <label>Ver Carpeta:</label>
+        <select id="filterFolder" onchange="cargarArchivosUI()"></select>
+
+        <br><br>
+        <button class="zip" id="btnZip" onclick="descargarCarpetaZip()" style="display:none;">📦 Descargar Carpeta (.ZIP)</button>
+
+        <div id="fileList">Cargando...</div>
     </div>
 
     <script>
-        // --- 1. CONFIGURACIÓN Y VARIABLES ---
-        const { jsPDF } = window.jspdf;
-        let dbCarpetas = ["General", "Trabajo", "Personal"];
-        let dbArchivos = []; // Aquí simulamos la base de datos en memoria
-        let imagenActualBase64 = null;
+        // --- 1. BASE DE DATOS POTENTE (IndexedDB) ---
+        // Esto permite guardar muchos megabytes de fotos sin límite.
+        const DB_NAME = "EscanerDB_v2";
+        let db;
 
-        // Al cargar la página, intentamos recuperar datos guardados anteriormente (LocalStorage)
-        window.onload = function() {
-            if(localStorage.getItem('misCarpetas')) {
-                dbCarpetas = JSON.parse(localStorage.getItem('misCarpetas'));
-                actualizarSelectores();
+        const request = indexedDB.open(DB_NAME, 1);
+
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            // Almacén de Carpetas
+            if (!db.objectStoreNames.contains("folders")) {
+                const folderStore = db.createObjectStore("folders", { keyPath: "name" });
+                folderStore.add({ name: "General" }); // Carpeta por defecto
             }
-            if(localStorage.getItem('misArchivos')) {
-                dbArchivos = JSON.parse(localStorage.getItem('misArchivos'));
-                mostrarArchivos();
+            // Almacén de Archivos
+            if (!db.objectStoreNames.contains("files")) {
+                const fileStore = db.createObjectStore("files", { keyPath: "id", autoIncrement: true });
+                fileStore.createIndex("folder", "folder", { unique: false });
             }
         };
 
-        // --- 2. LÓGICA DE CAPTURA DE IMAGEN ---
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            cargarCarpetasUI();
+            cargarArchivosUI();
+        };
+
+        // --- 2. LÓGICA DE INTERFAZ Y CAPTURA ---
+        
+        let imagenBase64 = null;
+
         document.getElementById('imageInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(event) {
-                    imagenActualBase64 = event.target.result;
-                    document.getElementById('preview').src = imagenActualBase64;
-                }
+                reader.onload = function(evt) {
+                    imagenBase64 = evt.target.result;
+                    const img = document.getElementById('preview');
+                    img.src = imagenBase64;
+                    img.style.display = "block";
+                    document.getElementById('btnGuardar').style.display = "block";
+                };
                 reader.readAsDataURL(file);
             }
         });
 
-        // --- 3. LÓGICA DE CARPETAS ---
-        function nuevaCarpeta() {
+        // --- 3. GESTIÓN DE CARPETAS ---
+
+        function crearCarpeta() {
             const nombre = prompt("Nombre de la nueva carpeta:");
-            if (nombre && !dbCarpetas.includes(nombre)) {
-                dbCarpetas.push(nombre);
-                localStorage.setItem('misCarpetas', JSON.stringify(dbCarpetas));
-                actualizarSelectores();
+            if (!nombre) return;
+
+            const tx = db.transaction(["folders"], "readwrite");
+            const store = tx.objectStore("folders");
+            
+            const req = store.add({ name: nombre });
+            
+            req.onsuccess = () => {
+                alert("Carpeta creada");
+                cargarCarpetasUI();
+            };
+            req.onerror = () => alert("Esa carpeta ya existe.");
+        }
+
+        function cargarCarpetasUI() {
+            const tx = db.transaction(["folders"], "readonly");
+            const store = tx.objectStore("folders");
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const carpetas = request.result;
+                const selectGuardar = document.getElementById('folderSelect');
+                const selectFiltrar = document.getElementById('filterFolder');
+                
+                // Guardar selección actual para no perderla al refrescar
+                const valGuardar = selectGuardar.value;
+                const valFiltrar = selectFiltrar.value;
+
+                selectGuardar.innerHTML = "";
+                selectFiltrar.innerHTML = "<option value='TODO'>-- Ver Todo --</option>";
+
+                carpetas.forEach(c => {
+                    selectGuardar.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+                    selectFiltrar.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+                });
+
+                if(valGuardar) selectGuardar.value = valGuardar;
+                if(valFiltrar) selectFiltrar.value = valFiltrar;
+            };
+        }
+
+        function eliminarCarpetaActual() {
+            const carpeta = document.getElementById('filterFolder').value;
+            if (carpeta === "TODO" || carpeta === "General") {
+                return alert("No puedes eliminar 'Ver Todo' ni la carpeta 'General'.");
             }
+
+            if (!confirm(`¿Estás seguro de eliminar la carpeta "${carpeta}" y TODOS sus archivos?`)) return;
+
+            // 1. Eliminar archivos
+            const tx = db.transaction(["files", "folders"], "readwrite");
+            const fileStore = tx.objectStore("files");
+            const folderIndex = fileStore.index("folder");
+            const folderStore = tx.objectStore("folders");
+
+            // Buscar todos los archivos de esa carpeta
+            const request = folderIndex.getAllKeys(IDBKeyRange.only(carpeta));
+
+            request.onsuccess = () => {
+                const ids = request.result;
+                // Borrar cada archivo
+                ids.forEach(id => fileStore.delete(id));
+                
+                // Borrar la carpeta
+                folderStore.delete(carpeta);
+
+                tx.oncomplete = () => {
+                    alert("Carpeta eliminada.");
+                    document.getElementById('filterFolder').value = "TODO";
+                    cargarCarpetasUI();
+                    cargarArchivosUI();
+                };
+            };
         }
 
-        function actualizarSelectores() {
-            const select = document.getElementById('folderSelect');
-            const filter = document.getElementById('filterFolder');
-            
-            // Limpiar
-            select.innerHTML = "";
-            filter.innerHTML = "<option value='Todas'>Todas</option>";
+        // --- 4. GUARDAR Y LISTAR ARCHIVOS ---
 
-            dbCarpetas.forEach(c => {
-                let opt1 = document.createElement("option");
-                opt1.value = c; opt1.text = c;
-                select.appendChild(opt1);
-
-                let opt2 = document.createElement("option");
-                opt2.value = c; opt2.text = c;
-                filter.appendChild(opt2);
-            });
-        }
-
-        // --- 4. GUARDAR (DENTRO DEL PROGRAMA) ---
         function guardarDocumento() {
-            if (!imagenActualBase64) return alert("¡Toma una foto primero!");
-            
-            const nombre = document.getElementById('fileName').value || "Sin Titulo";
+            const nombre = document.getElementById('fileName').value || "Doc Sin Titulo";
             const carpeta = document.getElementById('folderSelect').value;
 
-            // Creamos el objeto documento
-            const nuevoDoc = {
-                id: Date.now(), // ID único basado en la fecha
-                nombre: nombre,
-                carpeta: carpeta,
-                fecha: new Date().toLocaleDateString(),
-                imagen: imagenActualBase64 // Guardamos la imagen codificada
+            const doc = {
+                name: nombre,
+                folder: carpeta,
+                date: new Date().toLocaleDateString(),
+                image: imagenBase64
             };
 
-            dbArchivos.push(nuevoDoc);
-            
-            // Guardamos en la memoria del navegador
-            // NOTA: LocalStorage tiene límite de espacio (5-10MB). 
-            // Para una app real profesional usaríamos IndexedDB.
-            try {
-                localStorage.setItem('misArchivos', JSON.stringify(dbArchivos));
-                mostrarArchivos();
-                alert("Guardado en la carpeta: " + carpeta);
-                
-                // Limpiar formulario
+            const tx = db.transaction(["files"], "readwrite");
+            tx.objectStore("files").add(doc);
+
+            tx.oncomplete = () => {
+                alert("Guardado exitosamente.");
+                // Limpiar
                 document.getElementById('fileName').value = "";
-                document.getElementById('preview').src = "";
-                imagenActualBase64 = null;
-            } catch (e) {
-                alert("Memoria llena. Borra algunos archivos antiguos.");
-            }
+                document.getElementById('preview').style.display = "none";
+                document.getElementById('imageInput').value = ""; 
+                document.getElementById('btnGuardar').style.display = "none";
+                imagenBase64 = null;
+                cargarArchivosUI();
+            };
         }
 
-        // --- 5. MOSTRAR Y DESCARGAR ---
-        function mostrarArchivos() {
-            const lista = document.getElementById('fileList');
+        function cargarArchivosUI() {
             const filtro = document.getElementById('filterFolder').value;
+            const btnZip = document.getElementById('btnZip');
+            const lista = document.getElementById('fileList');
             lista.innerHTML = "";
 
-            const archivosFiltrados = dbArchivos.filter(doc => 
-                filtro === "Todas" ? true : doc.carpeta === filtro
-            );
+            // Solo mostrar botón ZIP si se selecciona una carpeta específica
+            btnZip.style.display = (filtro !== "TODO") ? "block" : "none";
 
-            if(archivosFiltrados.length === 0) {
-                lista.innerHTML = "<p style='color:#777; text-align:center'>No hay archivos aquí</p>";
-                return;
+            const tx = db.transaction(["files"], "readonly");
+            const store = tx.objectStore("files");
+            let request;
+
+            if (filtro === "TODO") {
+                request = store.getAll();
+            } else {
+                const index = store.index("folder");
+                request = index.getAll(IDBKeyRange.only(filtro));
             }
 
-            archivosFiltrados.forEach(doc => {
-                const item = document.createElement('div');
-                item.className = 'file-item';
-                item.innerHTML = `
-                    <div class="file-info">
-                        <strong>${doc.nombre}</strong><br>
-                        <span style="color:#666; font-size:0.8em">📅 ${doc.fecha} | 📁 ${doc.carpeta}</span>
-                    </div>
-                    <button class="btn-download" onclick="descargarPDF(${doc.id})">⬇ PDF</button>
-                `;
-                lista.appendChild(item);
-            });
-        }
+            request.onsuccess = () => {
+                const archivos = request.result;
+                if (archivos.length === 0) {
+                    lista.innerHTML = "<p style='text-align:center; color:#888'>Carpeta vacía</p>";
+                    return;
+                }
 
-        async function descargarPDF(id) {
-            const docData = dbArchivos.find(d => d.id === id);
-            if (!docData) return;
-
-            const doc = new jsPDF();
-            // Agregamos la imagen al PDF (Ajustada a A4)
-            doc.addImage(docData.imagen, 'JPEG', 10, 10, 190, 0);
-            
-            // Esto fuerza la descarga al almacenamiento del teléfono
-            doc.save(`${docData.nombre}.pdf`);
-        }
-    </script>
-</body>
-</html>
+                archivos.forEach(doc => {
+                    const div = document.createElement("div");
+                    div.className = "file-item";
+                    div.innerHTML = `
+                        <div class="file-info">
+                            <strong>${doc.name}</strong><br>
