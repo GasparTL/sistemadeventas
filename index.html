@@ -254,3 +254,80 @@
                     div.innerHTML = `
                         <div class="file-info">
                             <strong>${doc.name}</strong><br>
+                            <span class="tag">${doc.folder}</span> <span style="font-size:0.8em; color:#888">${doc.date}</span>
+                        </div>
+                        <div class="file-actions">
+                            <button class="icon-btn" style="background:#28a745" onclick="descargarPDF(${doc.id})">⬇</button>
+                            <button class="icon-btn delete" onclick="borrarArchivo(${doc.id})">✖</button>
+                        </div>
+                    `;
+                    lista.appendChild(div);
+                });
+            };
+        }
+
+        function borrarArchivo(id) {
+            if(!confirm("¿Borrar este archivo?")) return;
+            const tx = db.transaction(["files"], "readwrite");
+            tx.objectStore("files").delete(id);
+            tx.oncomplete = () => cargarArchivosUI();
+        }
+
+        // --- 5. DESCARGAS (PDF INDIVIDUAL Y ZIP) ---
+
+        async function descargarPDF(id) {
+            // Buscamos el archivo en la BD
+            const tx = db.transaction(["files"], "readonly");
+            const req = tx.objectStore("files").get(id);
+            
+            req.onsuccess = async () => {
+                const doc = req.result;
+                if(!doc) return;
+                
+                const pdf = new window.jspdf.jsPDF();
+                pdf.addImage(doc.image, 'JPEG', 10, 10, 190, 0); // Ajuste automático de altura
+                pdf.save(`${doc.name}.pdf`);
+            };
+        }
+
+        async function descargarCarpetaZip() {
+            const carpetaNombre = document.getElementById('filterFolder').value;
+            if(carpetaNombre === "TODO") return;
+
+            const tx = db.transaction(["files"], "readonly");
+            const index = tx.objectStore("files").index("folder");
+            const req = index.getAll(IDBKeyRange.only(carpetaNombre));
+
+            req.onsuccess = async () => {
+                const archivos = req.result;
+                if(archivos.length === 0) return alert("La carpeta está vacía.");
+
+                const zip = new JSZip();
+                const folderZip = zip.folder(carpetaNombre);
+                
+                alert(`Generando ZIP con ${archivos.length} documentos... espera un momento.`);
+
+                // Generamos un PDF por cada archivo encontrado
+                for (let doc of archivos) {
+                    const pdf = new window.jspdf.jsPDF();
+                    pdf.addImage(doc.image, 'JPEG', 10, 10, 190, 0);
+                    // Convertimos el PDF a Blob
+                    const pdfBlob = pdf.output('blob');
+                    // Lo metemos en el ZIP
+                    folderZip.file(`${doc.name}.pdf`, pdfBlob);
+                }
+
+                // Generar el archivo .zip final y descargarlo
+                const content = await zip.generateAsync({type:"blob"});
+                
+                // Truco para descargar blob
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = `${carpetaNombre}.zip`;
+                link.click();
+            };
+        }
+
+    </script>
+</body>
+</html>
